@@ -1,2 +1,60 @@
-# quark-media-index
-Quark Drive media and archive index site (filenames and metadata only, no file content)
+# 夸克网盘 · 影音与归档索引
+
+一个纯静态的个人网盘媒体与归档文件索引站点，托管于 GitHub Pages。
+
+**在线访问**：<https://sxs159733.github.io/quark-media-index/>
+
+> 本仓库与页面**只包含文件名与元数据索引**，不存储、不提供任何实际文件内容。影视资源版权归原作者与平台所有。
+
+## 功能
+
+- 关键词搜索（文件名 + 所在目录）
+- 分类切换：视频 / 音频 / 压缩包 / 安装包 / 备份归档 / 合集
+- 分辨率筛选（4K / 1080p / 其他）
+- 排序：默认 / 大小 / 更新时间 / 名称
+- 分页浏览，点击目录快速按路径筛选
+
+## 数据概览
+
+| 分类 | 数量 | 体量 |
+|---|---|---|
+| 视频 | 3367 | ~1.06 TB |
+| 音频 | 311 | ~2.1 GB |
+| 压缩包 | 17 | ~6.2 GB |
+| 安装包 | 31 | ~5.4 GB |
+| 备份归档 | 12 | 文件夹级 |
+| 合集 | 170 | 文件夹级 |
+
+合计 **3908 条**索引。文件名中的手机号已脱敏；设备备份与深层目录按文件夹级收录。
+
+## 目录结构
+
+```
+.
+├── index.html      # 站点页面（样式与逻辑内联）
+├── data.js         # 索引数据（window.INDEX_DATA）
+├── data.json       # 同源数据（JSON，便于二次处理）
+├── 404.html        # 自定义 404 页
+├── favicon.svg     # 站点图标
+└── .github/workflows/deploy-pages.yml   # GitHub Actions 部署流水线
+```
+
+## 部署
+
+站点通过 **GitHub Actions** 自动部署到 GitHub Pages：
+
+- 触发条件：推送到 `main` 分支，或手动 `workflow_dispatch`。
+- 流水线会先校验 `index.html` / `data.js` 存在且数据可解析，再上传工件并发布。
+- 并发组 `github-pages` 保证同一时间只有一个部署在运行。
+
+### 更新数据
+
+网盘内容有变动时，在本地重新生成数据后提交即可自动触发部署：
+
+1. 用夸克网盘 CLI 扫描目录，落盘为 `browse/*.jsonl`。
+2. 运行 `build-index.cjs` 汇总生成 `site/data.js` 与 `site/data.json`。
+3. 将新的 `data.js` / `data.json` 提交到 `main`。
+
+## 免责声明
+
+本项目仅为个人文件的目录索引，便于检索与整理。所有媒体内容的版权归原作者所有；请勿将本索引用于传播受版权保护的内容。
