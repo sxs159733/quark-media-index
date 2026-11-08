@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>夸克网盘 · 影音与归档索引</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#171e2e; --panel2:#1d2639; --line:#2a3550;
+    --text:#e8edf7; --muted:#8b98b8; --accent:#4da3ff; --accent2:#7ee0a3;
+    --chip:#223052;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;font-size:14px;line-height:1.5}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 16px 60px}
+  header h1{font-size:24px;font-weight:700}
+  header .sub{color:var(--muted);margin-top:6px;font-size:13px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.15s}
+  .card:hover,.card.active{border-color:var(--accent)}
+  .card.active{background:var(--panel2)}
+  .card .t{color:var(--muted);font-size:12px}
+  .card .v{font-size:20px;font-weight:700;margin-top:2px}
+  .card .s{color:var(--muted);font-size:12px;margin-top:2px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:14px}
+  .toolbar input[type=search]{flex:1;min-width:220px;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 12px;font-size:14px;outline:none}
+  .toolbar input[type=search]:focus{border-color:var(--accent)}
+  .toolbar select{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;outline:none}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .chip{background:var(--chip);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:#08111f;font-weight:600}
+  .meta-line{color:var(--muted);font-size:13px;margin-bottom:10px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel2);color:var(--muted);font-size:12px;font-weight:600;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#1a2338}
+  .name{font-weight:600;word-break:break-all}
+  .badge{display:inline-block;font-size:11px;border-radius:5px;padding:1px 7px;margin-right:7px;vertical-align:1px;white-space:nowrap}
+  .b-video{background:#1c3a5e;color:#7cc4ff}.b-audio{background:#1e4034;color:#7ee0a3}
+  .b-archive{background:#4a3a1c;color:#ffd47e}.b-app{background:#3d2a52;color:#cf9dff}
+  .b-backup{background:#4a2430;color:#ff9db0}.b-collection{background:#2a3550;color:#aebadf}
+  .path{color:var(--muted);font-size:12px;margin-top:3px;word-break:break-all;cursor:pointer}
+  .path:hover{color:var(--accent);text-decoration:underline}
+  .num{white-space:nowrap;color:var(--text)}
+  .dim{color:var(--muted);white-space:nowrap;font-size:13px}
+  .pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:16px;flex-wrap:wrap}
+  .pager button{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px}
+  .pager button:disabled{opacity:.4;cursor:default}
+  .pager span{color:var(--muted);font-size:13px}
+  footer{margin-top:34px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:14px}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  @media (max-width:720px){ .hide-sm{display:none} th,td{padding:8px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>夸克网盘 · 影音与归档索引</h1>
+    <div class="sub" id="subtitle">个人网盘媒体与归档文件目录 · 仅索引文件名与元数据，不包含文件内容</div>
+  </header>
+  <div class="cards" id="cards"></div>
+  <div class="chips" id="chips"></div>
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="搜索文件名或目录，如：凡人修仙传 / 久石让 / 4K …">
+    <select id="res">
+      <option value="">全部分辨率</option>
+      <option value="4k">4K</option>
+      <option value="1080p">1080p</option>
+      <option value="other">其他/未知</option>
+    </select>
+    <select id="sort">
+      <option value="default">默认排序</option>
+      <option value="size">大小 ↓</option>
+      <option value="updated">更新时间 ↓</option>
+      <option value="name">名称 A→Z</option>
+    </select>
+  </div>
+  <div class="meta-line"><span id="count"></span><span id="sum"></span></div>
+  <table>
+    <thead><tr>
+      <th style="width:46%">名称 / 目录</th>
+      <th>大小</th>
+      <th class="hide-sm">时长 / 分辨率 / 数量</th>
+      <th class="hide-sm">更新时间</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="empty" id="empty" style="display:none">没有匹配的结果</div>
+  <div class="pager">
+    <button id="prev">上一页</button><span id="pageinfo"></span><button id="next">下一页</button>
+  </div>
+  <footer id="footer"></footer>
+</div>
+<script src="data.js"></script>
+<script>
+(function(){
+  var D = window.INDEX_DATA;
+  var CAT = {video:'视频',audio:'音频',archive:'压缩包',app:'安装包',backup:'备份归档',collection:'合集'};
+  var BADGE = {video:'b-video',audio:'b-audio',archive:'b-archive',app:'b-app',backup:'b-backup',collection:'b-collection'};
+  var state = {cat:'', q:'', res:'', sort:'default', page:1};
+  var PAGE = 100;
+
+  function fmtSize(b){
+    if(!b) return '—';
+    if(b >= 1099511627776) return (b/1099511627776).toFixed(2)+' TB';
+    if(b >= 1073741824) return (b/1073741824).toFixed(2)+' GB';
+    if(b >= 1048576) return (b/1048576).toFixed(1)+' MB';
+    if(b >= 1024) return (b/1024).toFixed(1)+' KB';
+    return b+' B';
+  }
+  function fmtDur(s){
+    if(!s) return '';
+    var h=Math.floor(s/3600), m=Math.floor(s%3600/60), sec=s%60;
+    return (h? h+':' : '') + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  }
+  function fmtDate(ms){ return ms ? new Date(ms).toISOString().slice(0,10) : '—'; }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  // 统计卡片
+  var cards = document.getElementById('cards');
+  var totalSize = D.items.reduce(function(s,i){return s+(i.s||0);},0);
+  var all = {t:'全部条目', v:D.meta.total, s:fmtSize(totalSize), cat:''};
+  var list = [all].concat(Object.keys(CAT).map(function(k){
+    var st = D.meta.stats[k] || {count:0,size:0};
+    return {t:CAT[k], v:st.count, s:(k==='collection'||k==='backup') ? '文件夹级索引' : fmtSize(st.size), cat:k};
+  }));
+  cards.innerHTML = list.map(function(c,i){
+    return '<div class="card'+(i===0?' active':'')+'" data-cat="'+c.cat+'"><div class="t">'+c.t+'</div><div class="v">'+c.v.toLocaleString()+'</div><div class="s">'+c.s+'</div></div>';
+  }).join('');
+  cards.addEventListener('click', function(e){
+    var el = e.target.closest('.card'); if(!el) return;
+    state.cat = el.dataset.cat; state.page = 1; sync(); render();
+  });
+
+  // 类别 chips
+  var chips = document.getElementById('chips');
+  chips.innerHTML = [''].concat(Object.keys(CAT)).map(function(k){
+    return '<button class="chip'+(k===''?' active':'')+'" data-cat="'+k+'">'+(k===''?'全部':CAT[k])+'</button>';
+  }).join('');
+  chips.addEventListener('click', function(e){
+    var el = e.target.closest('.chip'); if(!el) return;
+    state.cat = el.dataset.cat; state.page = 1; sync(); render();
+  });
+
+  function sync(){
+    Array.prototype.forEach.call(chips.children, function(el){ el.classList.toggle('active', el.dataset.cat===state.cat); });
+    Array.prototype.forEach.call(cards.children, function(el){ el.classList.toggle('active', el.dataset.cat===state.cat); });
+  }
+
+  function filtered(){
+    var q = state.q.trim().toLowerCase();
+    var arr = D.items.filter(function(i){
+      if(state.cat && i.c!==state.cat) return false;
+      if(q && (i.n+' '+i.p).toLowerCase().indexOf(q)<0) return false;
+      if(state.res){
+        if(state.res==='other'){ if(i.r==='4k'||i.r==='1080p') return false; }
+        else if(i.r!==state.res) return false;
+      }
+      return true;
+    });
+    if(state.sort==='size') arr.sort(function(a,b){return (b.s||0)-(a.s||0);});
+    else if(state.sort==='updated') arr.sort(function(a,b){return (b.u||0)-(a.u||0);});
+    else if(state.sort==='name') arr.sort(function(a,b){return a.n.localeCompare(b.n,'zh');});
+    return arr;
+  }
+
+  function render(){
+    var arr = filtered();
+    var pages = Math.max(1, Math.ceil(arr.length/PAGE));
+    if(state.page>pages) state.page=pages;
+    var slice = arr.slice((state.page-1)*PAGE, state.page*PAGE);
+    var rows = document.getElementById('rows');
+    rows.innerHTML = slice.map(function(i){
+      var info = [];
+      if(i.c==='collection'||i.c==='backup') info.push((i.k||0)+' 项');
+      if(i.d) info.push(fmtDur(i.d));
+      if(i.r) info.push(i.r.toUpperCase());
+      var pathHtml = i.p ? '<div class="path" title="点击按此目录筛选">'+esc(i.p)+'</div>' : '<div class="path dim" style="cursor:default">根目录</div>';
+      return '<tr><td><span class="badge '+BADGE[i.c]+'">'+CAT[i.c]+'</span><span class="name">'+esc(i.n)+'</span>'+pathHtml+'</td>'+
+        '<td class="num">'+fmtSize(i.s)+'</td>'+
+        '<td class="dim hide-sm">'+(info.join(' · ')||'—')+'</td>'+
+        '<td class="dim hide-sm">'+fmtDate(i.u)+'</td></tr>';
+    }).join('');
+    document.getElementById('empty').style.display = arr.length? 'none':'block';
+    document.getElementById('count').textContent = '共 '+arr.length.toLocaleString()+' 条'+(state.q?'（搜索：'+state.q+'）':'');
+    var sz = arr.reduce(function(s,i){return s+(i.s||0);},0);
+    document.getElementById('sum').textContent = sz? '合计 '+fmtSize(sz) : '';
+    document.getElementById('pageinfo').textContent = state.page+' / '+pages;
+    document.getElementById('prev').disabled = state.page<=1;
+    document.getElementById('next').disabled = state.page>=pages;
+  }
+
+  document.getElementById('q').addEventListener('input', function(){ state.q=this.value; state.page=1; render(); });
+  document.getElementById('res').addEventListener('change', function(){ state.res=this.value; state.page=1; render(); });
+  document.getElementById('sort').addEventListener('change', function(){ state.sort=this.value; state.page=1; render(); });
+  document.getElementById('prev').addEventListener('click', function(){ state.page--; render(); window.scrollTo(0,0); });
+  document.getElementById('next').addEventListener('click', function(){ state.page++; render(); window.scrollTo(0,0); });
+  document.getElementById('rows').addEventListener('click', function(e){
+    var el = e.target.closest('.path'); if(!el || !el.title) return;
+    state.q = el.textContent; state.page = 1;
+    document.getElementById('q').value = state.q; render();
+  });
+
+  var gen = new Date(D.meta.generated);
+  document.getElementById('subtitle').textContent += ' · 生成于 '+gen.toISOString().slice(0,10);
+  document.getElementById('footer').innerHTML =
+    '数据来源：夸克网盘目录扫描（'+D.meta.rawItems.toLocaleString()+' 个原始条目，去重 '+D.meta.duplicatesRemoved+' 条，过滤非影音归档条目 '+D.meta.excludedNonMedia+' 条）。<br>'+
+    '本页面仅为文件名与元数据索引，不存储、不提供任何文件内容；影视资源版权归原作者与平台所有。文件名中的手机号已做脱敏处理。<br>'+
+    '设备备份与深层目录按文件夹级收录，未逐层展开。';
+  render();
+})();
+</script>
+</body>
+</html>
