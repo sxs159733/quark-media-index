@@ -1,0 +1,182 @@
+/* =========================================================
+   夸克影音索引 · 评分与评论 UI（暗色主题，适配 index.html 设计变量）
+   配合 community.js 使用：行内 [data-rate] 占位 + 详情弹窗评分评论区
+   ========================================================= */
+
+/* ---------- 行内评分占位（表格名称下方） ---------- */
+.row-rate {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+  min-height: 1.2em;
+  font-size: 12px;
+  letter-spacing: .02em;
+  color: var(--muted);
+}
+.row-rate b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.row-rate .cm-sep { opacity: .6; }
+.row-rate .no-rate { opacity: .55; }
+
+/* ---------- 星级（叠层填充 technique） ---------- */
+.stars {
+  position: relative;
+  display: inline-block;
+  font-size: .95em;
+  line-height: 1;
+  letter-spacing: 1px;
+  color: #3a4560;
+  white-space: nowrap;
+}
+.stars-bg { display: inline-block; }
+.stars-fg {
+  position: absolute;
+  left: 0; top: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: #f5b942;
+}
+.stars-lg { font-size: 1.25rem; letter-spacing: 2px; }
+
+/* ---------- 名称可点击打开详情 ---------- */
+.name.open-item { cursor: pointer; }
+.name.open-item:hover { color: var(--accent); text-decoration: underline; }
+
+/* ---------- 详情弹窗 ---------- */
+dialog.item-dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+  overflow: hidden;
+}
+dialog.item-dialog::backdrop { background: rgba(5, 9, 18, .66); backdrop-filter: blur(2px); }
+.id-scroll { max-height: calc(100vh - 48px); overflow-y: auto; padding: 22px 24px 26px; }
+.id-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 6px; }
+.id-title { font-size: 17px; font-weight: 700; word-break: break-all; line-height: 1.4; }
+.id-path { color: var(--muted); font-size: 12px; margin-top: 6px; word-break: break-all; }
+.id-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.id-meta .badge { margin-right: 0; }
+.id-close {
+  flex: none;
+  width: 32px; height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel2);
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.id-close:hover { border-color: var(--accent); color: var(--text); }
+
+/* ---------- 评分评论区 ---------- */
+.rd-community { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.rd-community h3 {
+  font-size: 13px;
+  letter-spacing: .12em;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.cm-note { font-size: 13px; color: var(--muted); padding: 6px 0; }
+.cm-retry {
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 2px 12px;
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.cm-retry:hover { border-color: var(--accent); color: var(--accent); }
+
+.cm-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
+.cm-avg { display: inline-flex; align-items: baseline; gap: 4px; }
+.cm-avg b { font-size: 2rem; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.cm-avg span { font-size: 12px; color: var(--muted); }
+.cm-count { font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+
+.cm-mine {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px;
+  padding: 13px 16px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+.cm-mine-label { color: var(--text); font-weight: 600; }
+.cm-pick { display: inline-flex; gap: 2px; }
+.cm-pick button {
+  border: 0; background: none; cursor: pointer;
+  padding: 4px 3px; font-size: 1.5rem; line-height: 1;
+  color: #3a4560;
+  transition: transform .15s, color .15s;
+}
+.cm-pick button.on { color: #f5b942; }
+.cm-pick button:hover { transform: scale(1.15); }
+.cm-pick button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.cm-pick button:disabled { cursor: wait; opacity: .7; }
+.cm-mine-note { font-size: 12px; color: var(--muted); }
+
+.cm-form { display: grid; gap: 10px; margin-bottom: 26px; }
+.cm-form input[type="text"], .cm-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px 14px;
+  font: inherit; font-size: 13px; line-height: 1.7;
+  transition: border-color .15s;
+}
+.cm-form input:focus, .cm-form textarea:focus { outline: none; border-color: var(--accent); }
+.cm-form textarea { min-height: 88px; resize: vertical; }
+.cm-form-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cm-form-msg { font-size: 12px; color: var(--muted); }
+.cm-form-msg.err { color: #ff9db0; }
+.cm-form-msg.ok { color: var(--accent2); }
+
+.btn {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #08111f;
+  border-radius: 8px;
+  padding: 0 22px;
+  min-height: 42px;
+  font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  flex: none;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .6; cursor: wait; }
+
+.cm-list h4 { font-size: 13px; letter-spacing: .08em; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.cm-item { padding: 14px 0; border-bottom: 1px dashed var(--line); }
+.cm-item:last-child { border-bottom: 0; }
+.cm-item header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-size: 13px; }
+.cm-item header b { color: var(--text); }
+.cm-item time { color: var(--muted); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cm-item p { font-size: 13px; color: var(--text); line-height: 1.8; white-space: pre-wrap; word-break: break-word; }
+.cm-empty { font-size: 13px; color: var(--muted); padding: 12px 0; }
+
+@media (max-width: 640px) {
+  .id-scroll { padding: 18px 16px 22px; }
+  .cm-summary { gap: 10px; }
+  .cm-avg b { font-size: 1.7rem; }
+  .cm-mine { padding: 12px 14px; }
+  .cm-pick button { font-size: 1.7rem; padding: 6px 5px; }
+  .cm-form-foot { flex-wrap: wrap; }
+  .cm-form-foot .btn { width: 100%; }
+  .cm-item header { flex-wrap: wrap; gap: 4px 12px; }
+}

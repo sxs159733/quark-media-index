@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>夸克网盘 · 影音与归档索引</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="community.css">
 <style>
   :root{
     --bg:#0f1420; --panel:#171e2e; --panel2:#1d2639; --line:#2a3550;
@@ -77,6 +78,8 @@
       <option value="size">大小 ↓</option>
       <option value="updated">更新时间 ↓</option>
       <option value="name">名称 A→Z</option>
+      <option value="rating">评分 高→低</option>
+      <option value="comments">评论 多→少</option>
     </select>
   </div>
   <div class="meta-line"><span id="count"></span><span id="sum"></span></div>
@@ -95,7 +98,9 @@
   </div>
   <footer id="footer"></footer>
 </div>
+<dialog id="itemDialog" class="item-dialog" aria-label="条目详情与评分评论"></dialog>
 <script src="data.js"></script>
+<script src="community.js"></script>
 <script>
 (function(){
   var D = window.INDEX_DATA;
@@ -103,6 +108,23 @@
   var BADGE = {video:'b-video',audio:'b-audio',archive:'b-archive',app:'b-app',backup:'b-backup',collection:'b-collection'};
   var state = {cat:'', q:'', res:'', sort:'default', page:1};
   var PAGE = 100;
+
+  // 条目稳定 ID：对「类别|路径|名称|大小」做内容哈希（与顺序无关，data.js 重新生成后仍稳定），
+  // 统一加本站前缀 qmi: 以隔离共享 Appwrite 后端里其他站点的数据。
+  function cyrb53(str, seed){
+    seed = seed || 0;
+    var h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for(var i=0,ch;i<str.length;i++){
+      ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1>>>16), 2246822507); h1 ^= Math.imul(h2 ^ (h2>>>13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2>>>16), 2246822507); h2 ^= Math.imul(h1 ^ (h1>>>13), 3266489909);
+    return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+  }
+  function rateId(i){ return 'qmi:' + cyrb53(i.c + '\u0001' + (i.p||'') + '\u0001' + i.n + '\u0001' + (i.s||0)).toString(36); }
+  D.items.forEach(function(i, idx){ i._idx = idx; i._rid = rateId(i); });
 
   function fmtSize(b){
     if(!b) return '—';
@@ -165,6 +187,14 @@
     if(state.sort==='size') arr.sort(function(a,b){return (b.s||0)-(a.s||0);});
     else if(state.sort==='updated') arr.sort(function(a,b){return (b.u||0)-(a.u||0);});
     else if(state.sort==='name') arr.sort(function(a,b){return a.n.localeCompare(b.n,'zh');});
+    else if(state.sort==='rating' || state.sort==='comments'){
+      var st=function(i){ return window.JZSCommunity ? window.JZSCommunity.getStats(i._rid) : {avg:0,count:0,comments:0}; };
+      arr.sort(function(a,b){
+        var sa=st(a), sb=st(b);
+        if(state.sort==='rating') return (sb.avg-sa.avg) || (sb.count-sa.count);
+        return (sb.comments-sa.comments) || (sb.avg-sa.avg);
+      });
+    }
     return arr;
   }
 
@@ -180,11 +210,13 @@
       if(i.d) info.push(fmtDur(i.d));
       if(i.r) info.push(i.r.toUpperCase());
       var pathHtml = i.p ? '<div class="path" title="点击按此目录筛选">'+esc(i.p)+'</div>' : '<div class="path dim" style="cursor:default">根目录</div>';
-      return '<tr><td><span class="badge '+BADGE[i.c]+'">'+CAT[i.c]+'</span><span class="name">'+esc(i.n)+'</span>'+pathHtml+'</td>'+
+      return '<tr><td><span class="badge '+BADGE[i.c]+'">'+CAT[i.c]+'</span><span class="name open-item" data-idx="'+i._idx+'" title="点击评分 / 评论">'+esc(i.n)+'</span>'+pathHtml+
+        '<div class="row-rate" data-rate="'+i._rid+'" data-idx="'+i._idx+'" title="点击评分 / 评论"></div></td>'+
         '<td class="num">'+fmtSize(i.s)+'</td>'+
         '<td class="dim hide-sm">'+(info.join(' · ')||'—')+'</td>'+
         '<td class="dim hide-sm">'+fmtDate(i.u)+'</td></tr>';
     }).join('');
+    if(window.JZSCommunity) window.JZSCommunity.decorateCards(rows);
     document.getElementById('empty').style.display = arr.length? 'none':'block';
     document.getElementById('count').textContent = '共 '+arr.length.toLocaleString()+' 条'+(state.q?'（搜索：'+state.q+'）':'');
     var sz = arr.reduce(function(s,i){return s+(i.s||0);},0);
@@ -200,9 +232,45 @@
   document.getElementById('prev').addEventListener('click', function(){ state.page--; render(); window.scrollTo(0,0); });
   document.getElementById('next').addEventListener('click', function(){ state.page++; render(); window.scrollTo(0,0); });
   document.getElementById('rows').addEventListener('click', function(e){
+    var openEl = e.target.closest('.name.open-item, .row-rate');
+    if(openEl){ openItem(Number(openEl.getAttribute('data-idx'))); return; }
     var el = e.target.closest('.path'); if(!el || !el.title) return;
     state.q = el.textContent; state.page = 1;
     document.getElementById('q').value = state.q; render();
+  });
+
+  // 详情弹窗：点击名称 / 行内评分打开，渲染评分评论区
+  var itemDialog = document.getElementById('itemDialog');
+  function openItem(idx){
+    var i = D.items[idx]; if(!i) return;
+    var info = [];
+    if(i.c==='collection'||i.c==='backup') info.push((i.k||0)+' 项');
+    if(i.d) info.push(fmtDur(i.d));
+    if(i.r) info.push(i.r.toUpperCase());
+    if(i.s) info.push(fmtSize(i.s));
+    itemDialog.innerHTML =
+      '<div class="id-scroll">'+
+        '<div class="id-head">'+
+          '<div>'+
+            '<div class="id-title">'+esc(i.n)+'</div>'+
+            '<div class="id-path">'+(i.p?esc(i.p):'根目录')+'</div>'+
+            '<div class="id-meta"><span class="badge '+BADGE[i.c]+'">'+CAT[i.c]+'</span>'+(info.length?'<span class="dim">'+esc(info.join(' · '))+'</span>':'')+'</div>'+
+          '</div>'+
+          '<button type="button" class="id-close" aria-label="关闭">×</button>'+
+        '</div>'+
+        '<section class="rd-community" data-community="'+i._rid+'" aria-label="评分与评论"></section>'+
+      '</div>';
+    itemDialog.querySelector('.id-close').addEventListener('click', closeItem);
+    if(!itemDialog.open) itemDialog.showModal();
+    if(window.JZSCommunity) window.JZSCommunity.renderDialog(i._rid, itemDialog.querySelector('[data-community]'));
+  }
+  function closeItem(){ if(itemDialog.open) itemDialog.close(); }
+  itemDialog.addEventListener('click', function(e){ if(e.target===itemDialog) closeItem(); });
+
+  // 评分数据就绪 / 更新后：刷新行内评分；若正按评分/评论排序则重排
+  window.addEventListener('jzs-stats', function(){
+    if(window.JZSCommunity) window.JZSCommunity.decorateCards(document.getElementById('rows'));
+    if(state.sort==='rating' || state.sort==='comments') render();
   });
 
   var gen = new Date(D.meta.generated);
